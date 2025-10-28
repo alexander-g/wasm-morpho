@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 project(traininglib_cpp)
 
+#set(CMAKE_VERBOSE_MAKEFILE on)
 
 #suppress a warning regarding FetchContent
 cmake_policy(SET CMP0135 NEW)
@@ -29,6 +30,9 @@ pybind11_add_module(
         morphology.cpp
 )
 target_include_directories(traininglib_cpp_ext PRIVATE ${eigen_SOURCE_DIR})
-
+target_compile_options(traininglib_cpp_ext PRIVATE
+  $<$<CXX_COMPILER_ID:GNU,Clang,Intel>: -O3 >
+  $<$<CXX_COMPILER_ID:MSVC>: /O2 /GL>
+)
 
 
