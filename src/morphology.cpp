@@ -6,15 +6,6 @@
 
 typedef Eigen::Array<bool,8,1> Array8b;
 
-typedef struct Index2D {
-    Eigen::Index i;
-    Eigen::Index j;
-
-    bool operator==(const Index2D& other) const { 
-        return i == other.i && j == other.j; 
-    }
-} Index2D;
-typedef std::vector<Index2D> Indices2D;
 
 
 
@@ -206,17 +197,6 @@ bool is_in(const Index2D& p, const Indices2D& indices) {
     return std::find(indices.begin(), indices.end(), p) != indices.end();
 }
 
-
-typedef struct DFS_Result {
-    /** Indices/pixels in order of visit  */
-    Indices2D visited;
-
-    /** Predecessor pixels along a path. Values indexing into `visited`. */
-    std::vector<int> predecessors;
-
-    /** Terminal pixels, first/last in a path. Values indexing into `visited` */
-    std::vector<int> leaves;
-} DFS_Result;
 
 
 /** Depth-first search*/

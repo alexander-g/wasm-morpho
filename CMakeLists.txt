@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 set(LIB_SRC_FILES
-    morphology.cpp
+    src/morphology.cpp
 )
 
 

@@ -4,7 +4,7 @@
 #include <Eigen/Core>
 #include <unsupported/Eigen/CXX11/Tensor>
 
-#include "./morphology.hpp"
+#include "./src/morphology.hpp"
 
 
 
