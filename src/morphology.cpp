@@ -1,11 +1,11 @@
 #include <iostream>
 #include <ranges>
+#include <unordered_set>
 
 #include "./morphology.hpp"
 
 
 typedef Eigen::Array<bool,8,1> Array8b;
-
 
 
 
@@ -197,6 +197,12 @@ bool is_in(const Index2D& p, const Indices2D& indices) {
     return std::find(indices.begin(), indices.end(), p) != indices.end();
 }
 
+uint64_t ravel_index2d(const Index2D& p, uint64_t imagewidth) {
+    return p.i * imagewidth + p.j;
+}
+
+
+
 
 
 /** Depth-first search*/
@@ -204,11 +210,18 @@ DFS_Result dfs(
     const EigenBinaryMap& input,
     const Index2D& start
 ) {
+    const uint64_t width = input.dimension(0);
+
     // stack: next index/pixel to visit and its predecessor
     std::vector<std::pair<Index2D, int>> stack;
     stack.push_back( {start, -1} );
 
     DFS_Result result;
+    result.leaves.push_back(0);
+
+    // set of visited indices for faster lookup
+    std::unordered_set<uint64_t> visited_set;
+    // or better a binary map of the same size as input?
 
     while(!stack.empty()) {
         const auto next = std::move(stack.back());
@@ -217,13 +230,13 @@ DFS_Result dfs(
         const Index2D& p = next.first;
         const int predecessor = next.second;
 
-        // TODO: use std::unordered_set for faster lookup
-        if( is_in(p, result.visited) )
+        if( visited_set.contains( ravel_index2d(p, width) ) )
             continue;
         
         const int p_i = result.visited.size();
         result.visited.push_back(p);
         result.predecessors.push_back(predecessor);
+        visited_set.insert( ravel_index2d(p, width) );
 
 
         bool no_unvisited_neighbors = true;
@@ -231,8 +244,7 @@ DFS_Result dfs(
 
         // reverse because horizontal and vertical neighbors have priority
         for(const Index2D& neighbor: std::views::reverse(neighbors)) {
-            // TODO: use std::unordered_set for faster lookup
-            if( is_in(neighbor, result.visited) )
+            if( visited_set.contains( ravel_index2d(neighbor, width) ) )
                 continue;
 
             if( input(neighbor.i, neighbor.j) ){
