@@ -32,7 +32,7 @@ jobs:
       
       - name: pytest
         run: |
-          pip install pytest
+          pip install pytest numpy
           pytest
 
 
