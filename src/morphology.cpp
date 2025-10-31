@@ -261,10 +261,16 @@ DFS_Result dfs(
 
 
 
-struct CCResult {
-    Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap;
-    int n_labels;
-};
+template<typename T>
+void scatter(
+    Eigen::Tensor<T, 2, Eigen::RowMajor>& x, 
+    const Indices2D& indices, 
+    T value
+) {
+    for(const Index2D& p: indices)
+        x(p.i, p.j) = value;
+}
+
 
 CCResult connected_components(const EigenBinaryMap& input) {
     const int H = input.dimension(0), W = input.dimension(1);
@@ -278,7 +284,9 @@ CCResult connected_components(const EigenBinaryMap& input) {
                 continue;
             
             const DFS_Result dfs_result = dfs(input, {i,j});
-            //
+            scatter(labelmap, dfs_result.visited, nextlabel);
+            nextlabel++;
         }
 
+    return {labelmap, nextlabel-1};
 }
