@@ -92,6 +92,19 @@ static py::dict dfs_py(
     return out;
 }
 
+static py::array_t<int> concom_py(const py_bool_array& mask_py) {
+    const EigenBinaryMap mask = array_to_eigen_tensor(mask_py);
+    const CCResult res = connected_components(mask);
+
+    const Eigen::Index d0 = res.labelmap.dimension(0);
+    const Eigen::Index d1 = res.labelmap.dimension(1);
+
+    py::array_t<int> y({ d0, d1 });
+    py::buffer_info ybufinfo = y.request();
+    Eigen::TensorMap<Eigen::Tensor<int, 2, Eigen::RowMajor>>((int*)ybufinfo.ptr, d0, d1) = res.labelmap;
+    return y;
+}
+
 
 PYBIND11_MODULE(traininglib_cpp_ext, m) {
     m.doc() = "traininglib c++ extensions";
@@ -104,5 +117,6 @@ PYBIND11_MODULE(traininglib_cpp_ext, m) {
         py::arg("start"),
         "Depth-first search on a 2D binary image"
     );
+    m.def("connected_components", &concom_py, py::arg("mask").noconvert());
 }
 
