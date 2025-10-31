@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ranges>
 
 #include "./morphology.hpp"
 
@@ -8,6 +9,10 @@ typedef Eigen::Array<bool,8,1> Array8b;
 typedef struct Index2D {
     Eigen::Index i;
     Eigen::Index j;
+
+    bool operator==(const Index2D& other) const { 
+        return i == other.i && j == other.j; 
+    }
 } Index2D;
 typedef std::vector<Index2D> Indices2D;
 
@@ -159,4 +164,129 @@ EigenBinaryMap skeletonize(const EigenMapToBinaryMap input) {
 
     const auto output = remove_padding(padded);
     return output;
+}
+
+
+
+Indices2D valid_neighbor_indices(
+    const Index2D& p, 
+    const EigenBinaryMap& image,
+    bool  _8way
+) {
+    Indices2D result;
+    result.reserve(8);
+
+    const auto dim0 = image.dimension(0);
+    const auto dim1 = image.dimension(1);
+
+    if(p.i > 0)
+        result.push_back( {p.i-1, p.j} );
+    if(p.j > 0)
+        result.push_back( {p.i,   p.j-1} );
+    if(p.i < dim0 -1)
+        result.push_back( {p.i+1, p.j} );
+    if(p.j < dim1 -1)
+        result.push_back( {p.i,   p.j+1} );
+    
+
+    if(_8way) {
+        if(p.i > 0       && p.j > 0)
+            result.push_back( {p.i-1, p.j-1} );
+        if(p.i > 0       && p.j < dim1 -1)
+            result.push_back( {p.i-1, p.j+1} );
+        if(p.i < dim0 -1 && p.j > 0)
+            result.push_back( {p.i+1, p.j-1} );
+        if(p.i < dim0 -1 && p.j < dim1 -1)
+            result.push_back( {p.i+1, p.j+1} );
+    }
+    return result;
+}
+
+bool is_in(const Index2D& p, const Indices2D& indices) {
+    return std::find(indices.begin(), indices.end(), p) != indices.end();
+}
+
+
+typedef struct DFS_Result {
+    /** Indices/pixels in order of visit  */
+    Indices2D visited;
+
+    /** Predecessor pixels along a path. Values indexing into `visited`. */
+    std::vector<int> predecessors;
+
+    /** Terminal pixels, first/last in a path. Values indexing into `visited` */
+    std::vector<int> leaves;
+} DFS_Result;
+
+
+/** Depth-first search*/
+DFS_Result dfs(
+    const EigenBinaryMap& input,
+    const Index2D& start
+) {
+    // stack: next index/pixel to visit and its predecessor
+    std::vector<std::pair<Index2D, int>> stack;
+    stack.push_back( {start, -1} );
+
+    DFS_Result result;
+
+    while(!stack.empty()) {
+        const auto next = std::move(stack.back());
+        stack.pop_back();
+
+        const Index2D& p = next.first;
+        const int predecessor = next.second;
+
+        // TODO: use std::unordered_set for faster lookup
+        if( is_in(p, result.visited) )
+            continue;
+        
+        const int p_i = result.visited.size();
+        result.visited.push_back(p);
+        result.predecessors.push_back(predecessor);
+
+
+        bool no_unvisited_neighbors = true;
+        const Indices2D neighbors = valid_neighbor_indices(p, input, true);
+
+        // reverse because horizontal and vertical neighbors have priority
+        for(const Index2D& neighbor: std::views::reverse(neighbors)) {
+            // TODO: use std::unordered_set for faster lookup
+            if( is_in(neighbor, result.visited) )
+                continue;
+
+            if( input(neighbor.i, neighbor.j) ){
+                stack.push_back( {neighbor, p_i} );
+                no_unvisited_neighbors = false;
+            }
+        }
+
+        if(no_unvisited_neighbors)
+            result.leaves.push_back(p_i);
+    }
+    return result;
+}
+
+
+
+struct CCResult {
+    Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap;
+    int n_labels;
+};
+
+CCResult connected_components(const EigenBinaryMap& input) {
+    const int H = input.dimension(0), W = input.dimension(1);
+    Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap(H, W);
+    labelmap.setZero();
+    int nextlabel = 1;
+
+    for (Eigen::Index i = 0; i < H; i++)
+        for (Eigen::Index j = 0; j < W; j++) {
+            if(input(i,j) == 0 || labelmap(i,j) != 0)
+                continue;
+            
+            const DFS_Result dfs_result = dfs(input, {i,j});
+            //
+        }
+
 }
