@@ -1,0 +1,64 @@
+name: CI
+
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+
+
+
+
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+      
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.69
+          actions-cache-folder: 'emsdk-cache'
+
+      # - name: Deno
+      #   run: |
+      #     ./deno.sh task cache
+      
+      - name: Build
+        run: |
+          emcc -v
+          mkdir build-wasm
+          cd build-wasm
+          emcmake cmake ..                      \
+            -DCMAKE_BUILD_TYPE=Release          \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+          emmake make
+          pwd
+          ls -halt
+
+      # - name: Test
+      #   run: |
+      #     ./run_tests_deno.sh
+
+
