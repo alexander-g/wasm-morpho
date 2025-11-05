@@ -107,7 +107,7 @@ static py::array_t<int> concom_py(const py_bool_array& mask_py) {
 
 
 PYBIND11_MODULE(traininglib_cpp_ext, m) {
-    m.doc() = "traininglib c++ extensions";
+    m.doc() = "some morphology functions";
 
     m.def("skeletonize", skeletonize_pybind, py::arg().noconvert());
     m.def(
