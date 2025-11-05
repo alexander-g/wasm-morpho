@@ -62,10 +62,10 @@ FetchContent_Declare(pybind
 FetchContent_MakeAvailable(pybind)
 
 
-pybind11_add_module(morpho_py main_pybind.cpp ${LIB_SRC_FILES})
-#target_include_directories(morpho_py PRIVATE ${eigen_SOURCE_DIR})
-target_link_libraries(morpho_py PRIVATE morpho_core)
-target_compile_options(morpho_py PRIVATE
+pybind11_add_module(morpho_pyext main_pybind.cpp ${LIB_SRC_FILES})
+#target_include_directories(morpho_pyext PRIVATE ${eigen_SOURCE_DIR})
+target_link_libraries(morpho_pyext PRIVATE morpho_core)
+target_compile_options(morpho_pyext PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,Intel>: -O3 >
   $<$<CXX_COMPILER_ID:MSVC>: /O2 /GL>
 )
