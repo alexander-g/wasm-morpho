@@ -133,7 +133,7 @@ Indices2D argwhere(const EigenBinaryMap& x) {
 }
 
 
-EigenBinaryMap skeletonize(const EigenMapToBinaryMap input) {
+EigenBinaryMap skeletonize(const EigenBinaryMap& input) {
     const auto dim0 = input.dimension(0);
     const auto dim1 = input.dimension(1);
 

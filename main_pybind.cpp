@@ -1,30 +1,13 @@
 #include <utility>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <Eigen/Dense>
-#include <Eigen/Core>
-#include <unsupported/Eigen/CXX11/Tensor>
-
+#include "./src/pybind-utils.hpp"
 #include "./src/morphology.hpp"
 
 
 
 namespace py = pybind11;
 
-typedef py::array_t<bool, py::array::c_style | py::array::forcecast> py_bool_array;
 
-
-static EigenMapToBinaryMap array_to_eigen_tensor(const py_bool_array& x) {
-    if (x.ndim() != 2)
-        throw std::runtime_error("input must be a 2D boolean array");
-    const ssize_t d0 = x.shape(0);
-    const ssize_t d1 = x.shape(1);
-
-    py::buffer_info xbufinfo = x.request();
-    const EigenMapToBinaryMap t((bool*)xbufinfo.ptr, d0, d1);
-    return t;
-}
 
 static py::array_t<int> int_vector_to_array(const std::vector<int>& x) {
     py::array_t<int> y(x.size());
@@ -58,7 +41,7 @@ static py::array_t<int64_t> indices2d_to_array(const Indices2D &x) {
 
 py::array_t<bool> skeletonize_pybind(py_bool_array& x) {
     py::buffer_info xbufinfo = x.request();
-    const EigenMapToBinaryMap x_t(array_to_eigen_tensor(x));
+    const EigenMapToBinaryMap x_t(boolarray_to_eigen_tensor(x));
     
     EigenBinaryMap y_t = skeletonize(x_t);
     
@@ -93,7 +76,7 @@ static py::dict dfs_py(
 }
 
 static py::array_t<int> concom_py(const py_bool_array& mask_py) {
-    const EigenBinaryMap mask = array_to_eigen_tensor(mask_py);
+    const EigenBinaryMap mask = boolarray_to_eigen_tensor(mask_py);
     const CCResult res = connected_components(mask);
 
     const Eigen::Index d0 = res.labelmap.dimension(0);
