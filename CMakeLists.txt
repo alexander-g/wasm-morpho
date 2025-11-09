@@ -62,7 +62,12 @@ FetchContent_Declare(pybind
 FetchContent_MakeAvailable(pybind)
 
 
-pybind11_add_module(morpho_pyext main_pybind.cpp ${LIB_SRC_FILES})
+pybind11_add_module(
+  morpho_pyext 
+  main_pybind.cpp 
+  src/pybind-utils.cpp
+  ${LIB_SRC_FILES}
+)
 #target_include_directories(morpho_pyext PRIVATE ${eigen_SOURCE_DIR})
 target_link_libraries(morpho_pyext PRIVATE morpho_core)
 target_compile_options(morpho_pyext PRIVATE

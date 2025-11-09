@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Eigen/Core>
 #include <unsupported/Eigen/CXX11/Tensor>
 
@@ -6,7 +8,7 @@ typedef Eigen::Tensor<bool, 2, Eigen::RowMajor> EigenBinaryMap;
 typedef Eigen::TensorMap<EigenBinaryMap> EigenMapToBinaryMap;
 
 /** Skeletonization as in https://doi.org/10.1145/357994.358023 */
-EigenBinaryMap skeletonize(const EigenMapToBinaryMap input);
+EigenBinaryMap skeletonize(const EigenBinaryMap& input);
 
 
 
@@ -42,6 +44,8 @@ DFS_Result dfs(const EigenBinaryMap& input, const Index2D& start);
 struct CCResult {
     Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap;
     int n_labels;
+
+    std::vector<DFS_Result> dfs_results;
 };
 
 CCResult connected_components(const EigenBinaryMap& input);
