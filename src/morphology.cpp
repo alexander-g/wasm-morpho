@@ -277,6 +277,7 @@ CCResult connected_components(const EigenBinaryMap& input) {
     Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap(H, W);
     labelmap.setZero();
     int nextlabel = 1;
+    std::vector<DFS_Result> dfs_results;
 
     for (Eigen::Index i = 0; i < H; i++)
         for (Eigen::Index j = 0; j < W; j++) {
@@ -285,8 +286,9 @@ CCResult connected_components(const EigenBinaryMap& input) {
             
             const DFS_Result dfs_result = dfs(input, {i,j});
             scatter(labelmap, dfs_result.visited, nextlabel);
+            dfs_results.push_back(dfs_result);
             nextlabel++;
         }
 
-    return {labelmap, nextlabel-1};
+    return {labelmap, nextlabel-1, dfs_results};
 }

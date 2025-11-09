@@ -44,6 +44,8 @@ DFS_Result dfs(const EigenBinaryMap& input, const Index2D& start);
 struct CCResult {
     Eigen::Tensor<int, 2, Eigen::RowMajor> labelmap;
     int n_labels;
+
+    std::vector<DFS_Result> dfs_results;
 };
 
 CCResult connected_components(const EigenBinaryMap& input);

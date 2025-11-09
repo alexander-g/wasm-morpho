@@ -15,27 +15,6 @@ static py::array_t<int> int_vector_to_array(const std::vector<int>& x) {
     return y;
 }
 
-static py::array_t<int64_t> indices2d_to_array(const Indices2D &x) {
-    const size_t n = (size_t)x.size();
-    py::array_t<int64_t> y({n, (size_t)2});
-
-    if (n == 0)
-        return y;
-
-    // future-proofing
-    static_assert(
-        sizeof(Index2D) == 2 * sizeof(int64_t), 
-        "Expecting Index2D to be tightly packed"
-    );
-    static_assert(
-        std::is_trivial<Index2D>::value, 
-        "Expecting Index2D to be trivially copyable"
-    );
-
-    // copy raw bytes: vector data is contiguous
-    std::memcpy(y.mutable_data(), x.data(), n * sizeof(Index2D));
-    return y;
-}
 
 
 
@@ -59,7 +38,7 @@ static py::dict dfs_py(
     const py_bool_array&     mask_py,
     const std::pair<int,int> start_py
 ) {
-    const EigenBinaryMap mask = array_to_eigen_tensor(mask_py);
+    const EigenBinaryMap mask = boolarray_to_eigen_tensor(mask_py);
     const Index2D start = {start_py.first, start_py.second};
 
     const DFS_Result res = dfs(mask, start);

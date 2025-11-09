@@ -21,5 +21,5 @@ typedef py::array_t<bool, py::array::c_style | py::array::forcecast> py_bool_arr
 /** numpy 2-D bool array to eigen tensor  */
 EigenMapToBinaryMap boolarray_to_eigen_tensor(const py_bool_array& x);
 
-
-
+/** vector of 2d indices to ndarray shape [N,2]  */
+py::array_t<int64_t> indices2d_to_array(const Indices2D &x);
