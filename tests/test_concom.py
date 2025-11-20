@@ -1,10 +1,11 @@
+import os
 import sys
 sys.path.insert(0, './build/')
 import morpho_pyext
 
 import numpy as np
+import PIL.Image
 
-import time
 
 def test_dfs():
     x0 = np.zeros([1000,1000], dtype=bool)
@@ -38,12 +39,17 @@ def test_concom():
     x0[300:400, 300] = 1 # single line
     x0[500,500] = 1 # single point
 
-    t0 = time.time()
     out0 = morpho_pyext.connected_components(x0)
-    t1 = time.time()
-    print(t1-t0)
 
     assert out0.max() == 4
     assert len( np.unique(out0) ) == 5
     assert len( np.unique( out0[200:300, 200:220] ) ) == 1
+
+
+def test_concom_skel():
+    # bug
+    skeletonfile0 = os.path.join( os.path.dirname(__file__), 'assets', 'skel0.png' )
+    x1 = np.array( PIL.Image.open( skeletonfile0 ).convert('L') ) > 0
+    out1 = morpho_pyext.connected_components(x1)
+    assert out1.max() == 4
 

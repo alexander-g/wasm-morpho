@@ -210,7 +210,7 @@ DFS_Result dfs(
     const EigenBinaryMap& input,
     const Index2D& start
 ) {
-    const uint64_t width = input.dimension(0);
+    const uint64_t width = input.dimension(1);
 
     // stack: next index/pixel to visit and its predecessor
     std::vector<std::pair<Index2D, int>> stack;
