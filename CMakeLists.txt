@@ -35,7 +35,7 @@ add_library(morpho_core STATIC
     ${LIB_SRC_FILES}
 )
 target_include_directories(morpho_core PUBLIC ${eigen_SOURCE_DIR})
-
+set_target_properties(morpho_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 
