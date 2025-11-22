@@ -35,7 +35,7 @@ add_library(morpho_core STATIC
     ${LIB_SRC_FILES}
 )
 target_include_directories(morpho_core PUBLIC ${eigen_SOURCE_DIR})
-
+set_target_properties(morpho_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
 
@@ -66,9 +66,9 @@ pybind11_add_module(
   morpho_pyext 
   main_pybind.cpp 
   src/pybind-utils.cpp
-  ${LIB_SRC_FILES}
+  #${LIB_SRC_FILES}
 )
-#target_include_directories(morpho_pyext PRIVATE ${eigen_SOURCE_DIR})
+target_include_directories(morpho_pyext PRIVATE ${eigen_SOURCE_DIR})
 target_link_libraries(morpho_pyext PRIVATE morpho_core)
 target_compile_options(morpho_pyext PRIVATE
   $<$<CXX_COMPILER_ID:GNU,Clang,Intel>: -O3 >
@@ -94,7 +94,7 @@ target_compile_options(wasm_morpho PRIVATE
 )
 
 
-add_custom_target(wasm-js ALL
+add_custom_target(wasm_morpho-js ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Running emcc"
     BYPRODUCTS ${CMAKE_BINARY_DIR}/wasm_morpho.js
     COMMAND emcc 
