@@ -68,6 +68,30 @@ static py::array_t<int> concom_py(const py_bool_array& mask_py) {
 }
 
 
+static py::list concom_streaming_py(const py_bool_array& mask_py) {
+    const EigenBinaryMap mask = boolarray_to_eigen_tensor(mask_py);
+
+    StreamingConnectedComponents scc;
+    for(int i = 0; i < mask.dimension(0); i++) {
+        const auto expect_row = row_slice(mask, i);
+        if(!expect_row) // should not happen
+            throw std::runtime_error(expect_row.error());
+        const EigenBinaryRow& row = expect_row.value();
+
+        const auto expect_ok = scc.push_image_row(row);
+        if(!expect_ok)
+            throw std::runtime_error(expect_ok.error());
+    }
+    const auto result = scc.finalize();
+
+    py::list output;
+    for(const Indices2D component: result.components)
+        output.append( indices2d_to_array(component) );
+
+    return output;
+}
+
+
 PYBIND11_MODULE(morpho_pyext, m) {
     m.doc() = "some morphology functions";
 
@@ -80,5 +104,10 @@ PYBIND11_MODULE(morpho_pyext, m) {
         "Depth-first search on a 2D binary image"
     );
     m.def("connected_components", &concom_py, py::arg("mask").noconvert());
+    m.def(
+        "connected_components_streaming", 
+        &concom_streaming_py, 
+        py::arg("mask").noconvert()
+    );
 }
 

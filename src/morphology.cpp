@@ -292,3 +292,168 @@ CCResult connected_components(const EigenBinaryMap& input) {
 
     return {labelmap, nextlabel-1, dfs_results};
 }
+
+
+
+std::expected<std::monostate, std::string> 
+StreamingConnectedComponents::push_image_row(const EigenBinaryRow& row) {
+    const int row_width = (int)row.dimension(0);
+    if(this->row_width == -1)
+        this->row_width = row_width;
+    else if(this->row_width != row_width)
+        return std::unexpected(
+            "Received a row with a different number of pixels than before." 
+        );
+    
+    Eigen::Tensor<int32_t, 1, Eigen::RowMajor>  current_row(row_width);
+    current_row.setZero();
+    const bool is_first_row = (this->row_number == 0);
+
+    for(int i = 0; i < row_width; i++) {
+        if(row(i)) {
+            const bool is_first_col = (i == 0);
+            const bool is_last_col  = (i == row_width-1);
+
+            // labels left, top, topright, topleft
+            const int32_t label_l  = (is_first_col)? 0 : current_row(i-1);
+            const int32_t label_t  = (is_first_row)? 0 : this->previous_row(i);
+            const int32_t label_tr = 
+                (is_first_row || is_last_col)? 0 : this->previous_row(i+1);
+            const int32_t label_tl = 
+                (is_first_row || is_first_col)? 0 : this->previous_row(i-1);
+            
+            const int32_t this_label = 
+                label_tr? label_tr :
+                label_t?  label_t  :
+                label_tl? label_tl :
+                label_l?  label_l  :
+                          this->all_components.size();
+            
+            if(label_l && label_l != this_label)
+                this->equivalent_labels.insert({label_l, this_label});
+
+            if(this_label >= this->all_components.size())
+                this->all_components.push_back({});
+
+            const Index2D coordinate = {this->row_number, i};
+            this->all_components[ this_label ].push_back(coordinate);
+            current_row(i) = this_label;
+        }
+    }
+    this->row_number++;
+    this->previous_row = current_row;
+
+    return std::monostate{};
+}
+
+
+
+/** Concatenate two ranges */
+template<std::ranges::input_range R1, std::ranges::input_range R2>
+auto concat_copy(const R1& a, const R2& b) {
+    using T = std::ranges::range_value_t<R1>;
+    std::vector<T> out;
+    out.reserve(std::ranges::size(a) + std::ranges::size(b));
+    out.insert(out.end(), std::ranges::begin(a), std::ranges::end(a));
+    out.insert(out.end(), std::ranges::begin(b), std::ranges::end(b));
+    return out;
+}
+
+
+/** Build adjacency and return connected components */
+std::vector<std::vector<int32_t>> connected_clusters(const Int32PairSet& edges){
+    // adjacency list
+    std::unordered_map<int32_t, std::vector<int32_t>> adj;
+    adj.reserve(edges.size()*2);
+
+    for(const auto& e: edges) {
+        const int32_t u = e.first;
+        const int32_t v = e.second;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+    std::vector<std::vector<int32_t>> components;
+    components.reserve(adj.size());
+
+    std::unordered_set<int32_t> visited;
+    visited.reserve(adj.size());
+
+    std::vector<int32_t> stack;
+    for (auto const& kv : adj) {
+        const int32_t start = kv.first;
+        if (visited.contains(start)) 
+            continue;
+
+        stack.clear();
+        stack.push_back(start);
+        visited.insert(start);
+
+        std::vector<int32_t> component;
+        while(!stack.empty()) {
+            const int32_t node = stack.back(); 
+            stack.pop_back();
+
+            component.push_back(node);
+            for(const int32_t neighbor: adj[node]) {
+                if(!visited.contains(neighbor)) {
+                    visited.insert(neighbor);
+                    stack.push_back(neighbor);
+                }
+            }
+        }
+        components.push_back(std::move(component));
+    }
+    return components;
+}
+
+
+CCResultStreaming StreamingConnectedComponents::finalize() {
+    if(this->all_components.size() == 0)
+        return {.components = {}};
+    
+    std::vector<std::vector<Index2D>> output;
+
+
+    const auto clusters = connected_clusters(this->equivalent_labels);
+    for(const auto& cluster: clusters) {
+        std::vector<Index2D> merged_component;
+        for(const int32_t index: cluster){
+            merged_component = 
+                concat_copy(merged_component, this->all_components[index]);
+            this->all_components[index].resize(0);
+        }
+        output.push_back(merged_component);
+    }
+
+    // remaining components not in equivalent_labels
+    for(int i = 0; i < this->all_components.size(); i++ ) {
+        if(this->all_components[i].empty())
+            continue;
+
+        output.push_back(this->all_components[i]);
+        this->all_components[i].resize(0);
+    }
+
+    return {.components = output};;
+}
+
+
+
+
+
+/** Extract a row from a binary image tensor. Shape [W] */
+std::expected<EigenBinaryRow, std::string> 
+row_slice(const EigenBinaryMap& t, Eigen::Index i) {
+    const Eigen::Index H = t.dimension(0);
+    const Eigen::Index W = t.dimension(1);
+
+    if(i < 0 || i >= H)
+        return std::unexpected("Row slice index out of range");
+
+    const Eigen::array<Eigen::Index, 2> offsets = { i, 0 };
+    const Eigen::array<Eigen::Index, 2> extents = { 1, W };
+    return t.slice(offsets, extents)
+            .reshape(Eigen::array<Eigen::Index, 1>{ W });
+}
+
+
