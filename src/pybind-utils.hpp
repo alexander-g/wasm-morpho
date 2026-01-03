@@ -23,3 +23,10 @@ EigenMapToBinaryMap boolarray_to_eigen_tensor(const py_bool_array& x);
 
 /** vector of 2d indices to ndarray shape [N,2]  */
 py::array_t<int64_t> indices2d_to_array(const Indices2D &x);
+
+/** List of np arrays [N,3] (row, start, len) to native RLE */
+ListOfRLEComponents py_list_to_rle_components(const py::list& components);
+
+/**  Native RLE to list of np arrays [N,3] (row, start, len) */
+py::list rle_components_to_py_list(const ListOfRLEComponents& components);
+

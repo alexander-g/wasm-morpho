@@ -85,8 +85,12 @@ static py::list concom_streaming_py(const py_bool_array& mask_py) {
     const auto result = scc.finalize();
 
     py::list output;
-    for(const Indices2D component: result.components)
-        output.append( indices2d_to_array(component) );
+    for(const RLEComponent component: result.components)
+        output.append( 
+            indices2d_to_array(
+                rle_component_to_dense(component)
+            ) 
+        );
 
     return output;
 }
