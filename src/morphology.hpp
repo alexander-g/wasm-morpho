@@ -71,9 +71,19 @@ struct int32_pair_hash {
 typedef 
 std::unordered_set<std::pair<int32_t, int32_t>, int32_pair_hash> Int32PairSet;
 
+// run-length encoding (RLE) to save memory
+struct RLERun {
+    uint32_t row;   // row index
+    uint32_t start; // start column (inclusive)
+    uint32_t len;   // length of run
+};
+
+// a single connected component in RLE format
+typedef std::vector<RLERun> RLEComponent;
+typedef std::vector<RLEComponent> ListOfRLEComponents;
 
 struct CCResultStreaming {
-    ListOfIndices2D components;
+    ListOfRLEComponents components;
 };
 
 /** Compute connected components by feeding one row at a time. */
@@ -92,9 +102,26 @@ struct StreamingConnectedComponents {
     int row_width  = -1;
     EigenIntRow  previous_row;
     Int32PairSet equivalent_labels;
-    ListOfIndices2D all_components = {{}};
-
+    ListOfRLEComponents all_components = {{}};
 };
+
+
+/** Total number of pixels in a component */
+uint64_t rle_component_size(const RLEComponent& component);
+
+/** Convert a component encoded in RLE format into dense pixel coordinates */
+Indices2D rle_component_to_dense(const RLEComponent& comp);
+
+/** Convert dense pixel coordinates into a component encoded in RLE format */
+RLEComponent dense_to_rle_component(
+    const Indices2D& dense,
+    bool already_sorted = false
+);
+
+ListOfRLEComponents dense_to_rle_components(
+    const ListOfIndices2D& dense, 
+    bool already_sorted = false
+);
 
 
 // TODO: move to a util file

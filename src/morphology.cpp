@@ -332,11 +332,36 @@ StreamingConnectedComponents::push_image_row(const EigenBinaryRow& row) {
             if(label_l && label_l != this_label)
                 this->equivalent_labels.insert({label_l, this_label});
 
+            // new component
             if(this_label >= this->all_components.size())
                 this->all_components.push_back({});
 
-            const Index2D coordinate = {this->row_number, i};
-            this->all_components[ this_label ].push_back(coordinate);
+            // append pixel as RLE: if last run in same component is contiguous 
+            // in this row then extend it
+            RLEComponent& component = this->all_components[this_label];
+            if(component.empty()) {
+                // new run
+                component.push_back(RLERun{
+                    (uint32_t) this->row_number,
+                    (uint32_t) i,
+                    1u
+                });
+            } else {
+                RLERun& last = component.back();
+                if(last.row == (uint32_t) this->row_number 
+                && last.start + last.len == (uint32_t) i) {
+                    // last run is on same row and contiguous: extend
+                    last.len += 1u;
+                } else {
+                    // new run
+                    component.push_back(RLERun{
+                        (uint32_t) this->row_number,
+                        (uint32_t) i,
+                        1u
+                    });
+                }
+            }
+
             current_row(i) = this_label;
         }
     }
@@ -406,22 +431,54 @@ std::vector<std::vector<int32_t>> connected_clusters(const Int32PairSet& edges){
     return components;
 }
 
+static void coalesce_runs(RLEComponent& runs) {
+    if(runs.size() <= 1) 
+        return;
+
+    // sort by (row, start)
+    std::sort(runs.begin(), runs.end(), [](const RLERun& a, const RLERun& b){
+        if(a.row != b.row)
+            return a.row < b.row;
+        //else
+        return a.start < b.start;
+    });
+
+    RLEComponent out;
+    out.reserve(runs.size());
+    out.push_back(runs[0]);
+
+    for(size_t k = 1; k < runs.size(); ++k) {
+        RLERun& last = out.back();
+        const RLERun &current = runs[k];
+        if(current.row == last.row && current.start <= last.start + last.len) {
+            // overlapping or contiguous: merge
+            const uint32_t last_end    = last.start    + last.len;
+            const uint32_t current_end = current.start + current.len;
+            last.len = 
+                (current_end > last_end) ? (current_end - last.start) : last.len;
+        } else {
+            out.push_back(current);
+        }
+    }
+    runs.swap(out);
+}
+
 
 CCResultStreaming StreamingConnectedComponents::finalize() {
     if(this->all_components.size() == 0)
         return {.components = {}};
     
-    std::vector<std::vector<Index2D>> output;
-
+    ListOfRLEComponents output;
 
     const auto clusters = connected_clusters(this->equivalent_labels);
     for(const auto& cluster: clusters) {
-        std::vector<Index2D> merged_component;
+        RLEComponent merged_component;
         for(const int32_t index: cluster){
             merged_component = 
                 concat_copy(merged_component, this->all_components[index]);
             this->all_components[index].resize(0);
         }
+        coalesce_runs(merged_component);
         output.push_back(merged_component);
     }
 
@@ -430,13 +487,93 @@ CCResultStreaming StreamingConnectedComponents::finalize() {
         if(this->all_components[i].empty())
             continue;
 
-        output.push_back(this->all_components[i]);
+        RLEComponent component = std::move(this->all_components[i]);
+        coalesce_runs(component);
+        output.push_back(std::move(component));
         this->all_components[i].resize(0);
     }
 
-    return {.components = output};;
+    return {.components = output};
 }
 
+
+/** Total number of pixels in a component */
+uint64_t rle_component_size(const RLEComponent& component) {
+    uint64_t total = 0;
+    for(const auto& run: component)
+        total += (size_t)(run.len);
+    return total;
+}
+
+std::vector<Index2D> rle_component_to_dense(const RLEComponent& component) {
+    std::vector<Index2D> output;
+    output.reserve(rle_component_size(component));
+
+    for(const auto& run: component) {
+        const Eigen::Index row   = (Eigen::Index)run.row;
+        const Eigen::Index start = (Eigen::Index)run.start;
+        for(uint32_t k = 0; k < run.len; ++k) 
+            output.push_back(Index2D{ row, start + (Eigen::Index)k });
+    }
+    return output;
+}
+
+RLEComponent dense_to_rle_component(
+    const Indices2D& dense,
+    bool already_sorted
+) {
+    RLEComponent output;
+    if(dense.empty()) 
+        return output;
+    
+    std::vector<Index2D> sorted;
+    sorted = already_sorted ? dense : std::vector<Index2D>(dense);
+    if(!already_sorted)
+        std::sort(sorted.begin(), sorted.end(), [](const Index2D& a, const Index2D& b){
+            return (a.i != b.i) ? (a.i < b.i) : (a.j < b.j);
+        });
+    
+
+    uint32_t current_row   = sorted[0].i;
+    uint32_t current_start = sorted[0].j;
+    uint32_t current_len   = 1;
+
+    for(int k = 1; k < sorted.size(); k++) {
+        const uint32_t y = sorted[k].i;
+        const uint32_t x = sorted[k].j;
+
+        if(y == current_row) {
+            if(x == current_start + current_len) {
+                current_len++;
+                continue;
+            } else if (x <= current_start + current_len - 1) {
+                // duplicate or overlapping coordinate, skip
+                continue;
+            }
+            // else there is a gap, finish run and create new one, below
+        }
+
+        output.push_back(RLERun{ current_row, current_start, current_len });
+        current_row   = y;
+        current_start = x;
+        current_len   = 1;
+    }
+
+    output.push_back(RLERun{ current_row, current_start, current_len });
+    return output;
+}
+
+ListOfRLEComponents dense_to_rle_components(
+    const ListOfIndices2D& dense, 
+    bool already_sorted
+) {
+    ListOfRLEComponents output;
+    for(const Indices2D indices: dense)
+        output.push_back( 
+            std::move(dense_to_rle_component(indices, already_sorted)) 
+        );
+    return output;
+}
 
 
 
