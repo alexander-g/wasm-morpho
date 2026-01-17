@@ -431,7 +431,8 @@ std::vector<std::vector<int32_t>> connected_clusters(const Int32PairSet& edges){
     return components;
 }
 
-static void coalesce_runs(RLEComponent& runs) {
+/** Make sure there is only one run per row. */
+void coalesce_rle_runs(RLEComponent& runs) {
     if(runs.size() <= 1) 
         return;
 
@@ -478,7 +479,7 @@ CCResultStreaming StreamingConnectedComponents::finalize() {
                 concat_copy(merged_component, this->all_components[index]);
             this->all_components[index].resize(0);
         }
-        coalesce_runs(merged_component);
+        coalesce_rle_runs(merged_component);
         output.push_back(merged_component);
     }
 
@@ -488,7 +489,7 @@ CCResultStreaming StreamingConnectedComponents::finalize() {
             continue;
 
         RLEComponent component = std::move(this->all_components[i]);
-        coalesce_runs(component);
+        coalesce_rle_runs(component);
         output.push_back(std::move(component));
         this->all_components[i].resize(0);
     }
