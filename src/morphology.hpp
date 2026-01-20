@@ -123,6 +123,9 @@ ListOfRLEComponents dense_to_rle_components(
     bool already_sorted = false
 );
 
+/** Make sure there is only one run per row. */
+void coalesce_rle_runs(RLEComponent& runs);
+
 
 // TODO: move to a util file
 
