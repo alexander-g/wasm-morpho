@@ -112,6 +112,12 @@ uint64_t rle_component_size(const RLEComponent& component);
 /** Convert a component encoded in RLE format into dense pixel coordinates */
 Indices2D rle_component_to_dense(const RLEComponent& comp);
 
+/** Convert a component encoded in RLE format into a dense hollow contour. */
+Indices2D rle_component_to_contour(const RLEComponent& component);
+
+/** Convert multiple components encoded in RLE format into dense contours. */
+ListOfIndices2D rle_components_to_contour(const ListOfRLEComponents& components);
+
 /** Convert dense pixel coordinates into a component encoded in RLE format */
 RLEComponent dense_to_rle_component(
     const Indices2D& dense,

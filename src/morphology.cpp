@@ -577,6 +577,54 @@ ListOfRLEComponents dense_to_rle_components(
 }
 
 
+Indices2D rle_component_to_contour(const RLEComponent& component) {
+    Indices2D contour;
+    if(component.empty())
+        return contour;
+
+    // row to runs for faster lookup
+    std::unordered_map<Eigen::Index, std::vector<RLERun>> rows;
+    rows.reserve(component.size());
+    for(const auto& run: component)
+        rows[(Eigen::Index)run.row].push_back(run);
+
+    auto is_filled = [&](Eigen::Index r, Eigen::Index c) -> bool{
+        auto it = rows.find(r);
+        if(it == rows.end()) 
+            return false;
+
+        for(const auto& run : it->second) {
+            Eigen::Index start = (Eigen::Index)run.start;
+            Eigen::Index end   = start + (Eigen::Index)run.len - 1;
+            if(c >= start && c <= end)
+                return true;
+        }
+        return false;
+    };
+
+    for(const auto& run : component) {
+        const Eigen::Index r     = (Eigen::Index)run.row;
+        const Eigen::Index start = (Eigen::Index)run.start;
+        const Eigen::Index end   = start + (Eigen::Index)run.len;
+
+        for(Eigen::Index c = start; c < end; ++c) {
+            if(!is_filled(r - 1, c) ||
+               !is_filled(r + 1, c) ||
+               !is_filled(r, c - 1) ||
+               !is_filled(r, c + 1))
+                contour.push_back(Index2D{ r, c });
+        }
+    }
+    return contour;
+}
+
+ListOfIndices2D rle_components_to_contour(const ListOfRLEComponents& components) {
+    ListOfIndices2D output;
+    for(const RLEComponent& rle: components)
+        output.push_back( rle_component_to_contour(rle) );
+    return output;
+}
+
 
 
 /** Extract a row from a binary image tensor. Shape [W] */
